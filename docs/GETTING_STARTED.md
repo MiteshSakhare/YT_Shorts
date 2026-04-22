@@ -18,7 +18,7 @@ YT/
 ├── 📦 venv/                     ← Virtual environment (fully configured)
 ├── 📂 src/                      ← SOURCE CODE (Production v2.1)
 │   ├── generate_short.py        ← Main video generator (750+ lines)
-│   ├── batch_generator.py       ← Batch processing with resume
+│   ├── batch_generate.py       ← Batch processing with resume
 │   ├── config.py                ← Configuration settings (fully optimized)
 │   ├── audio_processor.py       ← Character audio FX + normalization
 │   ├── background_engine.py     ← Pexels integration + mood selection

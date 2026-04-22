@@ -28,6 +28,23 @@ except ImportError:
     import config
 
 
+def _proc_solid_color(mood: str, duration: float, out: str) -> bool:
+    """Generate a simple solid dark grey background for Tier 0 (No BS mode)."""
+    logger.info("   ⬛ Generating solid color background…")
+    
+    cmd = [
+        "ffmpeg", "-y", "-f", "lavfi", "-i", f"color=c=0x111111:s={config.VID_WIDTH}x{config.VID_HEIGHT}",
+        "-t", str(duration), "-r", str(config.VID_FPS),
+        "-c:v", config.VIDEO_CODEC, "-preset", "ultrafast",
+        "-pix_fmt", "yuv420p", out
+    ]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        return r.returncode == 0
+    except Exception as e:
+        logger.error(f"Failed to generate solid background: {e}")
+        return False
+
 # ═══════════════════════════════════════════════════════════════
 #  TIER 1: PROCEDURAL BACKGROUNDS (FFmpeg)
 # ═══════════════════════════════════════════════════════════════
@@ -209,8 +226,50 @@ def generate_procedural_background(mood: str, duration: float, out: str) -> bool
 
 
 # ═══════════════════════════════════════════════════════════════
-#  TIER 2: PEXELS STOCK FOOTAGE
+#  TIER 2: PEXELS STOCK FOOTAGE with Content Filtering
 # ═══════════════════════════════════════════════════════════════
+
+def _filter_background_content(video_obj: Dict) -> bool:
+    """
+    Filter background videos to exclude:
+    - Humans, people, faces
+    - 3D particles, CGI, renders
+    - Urban/modern content
+    - Only allow: nature, wildlife, structures, abstract
+    
+    Args:
+        video_obj: Video object from Pexels API
+    
+    Returns: True if video passes filters, False otherwise
+    """
+    if not config.FILTER_BACKGROUND_CONTENT:
+        return True
+    
+    # Get video attributes: tags, id, url, etc
+    video_tags = str(video_obj.get("tags", [])).lower()
+    video_url = str(video_obj.get("url", "")).lower()
+    video_id = video_obj.get("id", 0)
+    
+    # Check blacklist (reject these terms)
+    for blacklisted in config.BLACKLIST_BACKGROUND_KEYWORDS:
+        if blacklisted.lower() in video_tags or blacklisted.lower() in video_url:
+            logger.debug(f"   ❌ Rejected video {video_id} — contains '{blacklisted}'")
+            return False
+    
+    # Check whitelist (prefer these terms)
+    allowed = False
+    for allowed_term in config.ALLOWED_BACKGROUND_KEYWORDS:
+        if allowed_term.lower() in video_tags or allowed_term.lower() in video_url:
+            allowed = True
+            break
+    
+    if not allowed:
+        logger.debug(f"   ❌ Rejected video {video_id} — no allowed keywords found")
+        return False
+    
+    logger.debug(f"   ✅ Approved video {video_id}")
+    return True
+
 
 def _search_pexels_video(query: str, orientation: str = "portrait") -> Optional[str]:
     """Search Pexels for a video and return download URL."""
@@ -244,15 +303,24 @@ def _search_pexels_video(query: str, orientation: str = "portrait") -> Optional[
         if not videos:
             return None
 
-        # Pick a random video from results for variety
-        video = random.choice(videos[:10])
+        # Filter videos by content policy
+        filtered_videos = [v for v in videos if _filter_background_content(v)]
+        
+        if not filtered_videos:
+            logger.warning(f"   ⚠️  No suitable videos after content filtering for query: {query}")
+            return None
+
+        # Pick a random video from filtered results for variety
+        video = random.choice(filtered_videos[:10])
 
         # Find the best quality file (prefer HD, portrait)
         best_file = None
         for vf in video.get("video_files", []):
             w = vf.get("width", 0)
             h = vf.get("height", 0)
-            if h > w and h >= 720:  # Portrait, at least 720p
+            
+            # Prioritize TRUE HD & 4K (h >= 1920). Still fall back to 1080 or 720 if not available
+            if h >= w:
                 if best_file is None or h > best_file.get("height", 0):
                     best_file = vf
 
@@ -298,7 +366,7 @@ def _prepare_pexels_video(src: str, duration: float, out: str) -> bool:
         "ffmpeg", "-y", "-stream_loop", "-1", "-i", src,
         "-vf", vf, "-t", str(duration), "-an",
         "-r", str(config.VID_FPS),
-        "-c:v", config.VIDEO_CODEC, "-preset", "ultrafast",
+        "-c:v", config.VIDEO_CODEC, "-preset", config.VIDEO_PRESET, "-crf", str(config.VIDEO_CRF),
         "-pix_fmt", "yuv420p", out
     ]
     r = subprocess.run(cmd, capture_output=True, text=True)
@@ -383,10 +451,12 @@ def generate_scene_backgrounds(
         mood = seg.get("mood", "neutral")
         if groups and groups[-1]["mood"] == mood:
             groups[-1]["word_count"] += len(seg.get("text", "").split())
+            groups[-1]["text"] += " " + seg.get("text", "")
         else:
             groups.append({
                 "mood":       mood,
                 "word_count": len(seg.get("text", "").split()),
+                "text":       seg.get("text", ""),
             })
 
     # Collapse tiny groups (< 5% of total) into neighbours to avoid flash cuts
@@ -395,6 +465,7 @@ def generate_scene_backgrounds(
     for g in groups:
         if g["word_count"] / total_words < 0.05 and merged:
             merged[-1]["word_count"] += g["word_count"]
+            merged[-1]["text"] += " " + g["text"]
         else:
             merged.append(g)
     groups = merged
@@ -426,27 +497,16 @@ def generate_scene_backgrounds(
                 continue
 
         if config.PEXELS_API_KEY:
-            # Smart relative keyword extraction for epic fantasy story
-            import string
-            stop_words = {'which', 'there', 'their', 'about', 'would', 'could', 'should', 'where', 'because', 'without', 'through', 'before', 'himself', 'herself', 'thought', 'always', 'never'}
-            fantasy_nouns = ['king', 'emperor', 'sword', 'castle', 'magic', 'creatures', 'shadows', 'light', 'academy', 'empire', 'energy', 'fire', 'darkness', 'battle', 'forest', 'mountain', 'stars', 'night', 'sky']
+            # Bypass dynamic natural language keyword extraction which accidentally
+            # triggers Pexels to return videos of human actors (e.g. "king", "knight").
+            # Instead, we strictly use the predefined B-Roll scenery terms in config
+            # and guarantee no people are included by appending scenery constraints.
             
-            words = [w.strip(string.punctuation) for w in txt.split()]
-            keywords = [w for w in words if len(w) > 4 and w not in stop_words]
-            
-            extracted = None
-            for kw in keywords:
-                if kw in fantasy_nouns:
-                    extracted = f"{mood} {kw}"
-                    break
-                    
-            if not extracted and keywords:
-                extracted = f"{mood} {max(set(keywords), key=keywords.count)}"
-                
-            candidates = [extracted] if extracted else config.PEXELS_SEARCH_TERMS.get(
-                mood, config.PEXELS_SEARCH_TERMS["neutral"]
-            )
-            
+            candidates = [
+                f"{q} landscape scenery nobody"
+                for q in config.PEXELS_SEARCH_TERMS.get(mood, config.PEXELS_SEARCH_TERMS["neutral"])
+            ]
+
             fresh = [q for q in candidates if q not in used_queries] or candidates
             query = random.choice(fresh)
             used_queries.add(query)
@@ -463,6 +523,8 @@ def generate_scene_backgrounds(
                         url = None
 
                 if url and os.path.exists(cached_raw):
+                    if first_clip_raw is None:
+                        first_clip_raw = cached_raw
                     if _prepare_pexels_video(cached_raw, dur, clip_path):
                         clip_paths.append(clip_path)
                         logger.info(f"   [{i+1}] ✅ Pexels clip ready")
@@ -512,29 +574,24 @@ def _crossfade_concat(
     FADE_DUR = 0.5   # seconds of crossfade overlap
 
     try:
-        # Build xfade filter chain
-        # xfade requires clips to have IDENTICAL resolution and FPS
+        # Build xfade filter chain - using dynamic dopamine transitions
+        import random
+        dopamine_transitions = ["zoomin", "slideleft", "slideright", "wipeleft", "wiperight", "smoothleft", "fade"]
+        
         n = len(clip_paths)
         filter_parts = []
-        current_label = "[0:v]"
 
         # Pre-process all inputs to strictly ensure identical timebase and framerate
         for i in range(n):
             filter_parts.append(f"[{i}:v]settb=1/1000,fps={config.VID_FPS}[v_norm_{i}]")
-            
-        current_label = "[v_norm_0]"
 
-        for i in range(1, n):
-            # offset = start time of clip i in the concatenated timeline
-            offset = sum(g["duration"] for g in groups[:i]) - FADE_DUR * i
-            offset = max(0.1, offset)
+        # Concat all clips with hard cuts
+        concat_inputs = "".join([f"[v_norm_{i}]" for i in range(n)])
+        filter_parts.append(f"{concat_inputs}concat=n={n}:v=1:a=0[v_merged]")
 
-            out_label = f"[v{i}]" if i < n - 1 else "[vout]"
-            filter_parts.append(
-                f"{current_label}[v_norm_{i}]xfade=transition=fade:"
-                f"duration={FADE_DUR}:offset={offset:.3f}{out_label}"
-            )
-            current_label = out_label
+        # Apply a fade-in at the very beginning and fade-out at the very end
+        fade_out_start = max(0.1, total_duration - 1.5)  # 1.5 second fade out
+        filter_parts.append(f"[v_merged]fade=t=in:st=0:d=1.5,fade=t=out:st={fade_out_start:.3f}:d=1.5[vout]")
 
         filter_complex = "; ".join(filter_parts)
 
@@ -619,7 +676,7 @@ def generate_background(
         return
 
     # Multi-scene path (NEW)
-    if segments and len(segments) > 1:
+    if segments and len(segments) > 1 and config.BG_TIER > 0:
         generate_scene_backgrounds(segments, duration, out)
         return
 
@@ -629,4 +686,9 @@ def generate_background(
         if generate_pexels_background(mood, duration, out):
             return
 
-    generate_procedural_background(mood, duration, out)
+    if tier >= 1:
+        generate_procedural_background(mood, duration, out)
+        return
+        
+    # Tier 0 (or fallback for all): Solid Color Background
+    _proc_solid_color(mood, duration, out)

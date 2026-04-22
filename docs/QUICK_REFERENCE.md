@@ -20,18 +20,18 @@ python src/generate_short.py input/part_0001.txt 1
 ### Generate All 225 Videos (Production)
 ```bash
 # Generate all 225 videos with resume capability
-python src/batch_generator.py
+python batch_generate.py
 # Estimated time: 7-8 hours
-# Can pause and resume: python src/batch_generator.py --resume SESSION_ID
+# Can pause and resume: python batch_generate.py --resume
 ```
 
 ### Generate Specific Range
 ```bash
 # Generate videos 1-50
-python src/batch_generator.py --start 1 --end 50
+python batch_generate.py --start 1 --end 50
 
 # Generate videos 100-150
-python src/batch_generator.py --start 100 --end 150
+python batch_generate.py --start 100 --end 150
 ```
 
 ---

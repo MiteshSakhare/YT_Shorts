@@ -1,7 +1,7 @@
 # Part 2: The Serpent’s Welcome
 
 NARRATOR:
-Written in elegant, arrogant script:
+Inside was a single line, written in elegant, arrogant script:
 
 “I know what you are, Demon Emperor. Don’t bother trying to hide at the Academy. I’ll be waiting.”
 
@@ -22,5 +22,3 @@ The morning of his departure, Duke Arcturus summoned him to the grand study. The
 “You will not shame this house, Kael,” the Duke said without turning. “The Academy has three factions: the Human Supremacists, the Church’s Inquisition cadets, and the Demon Lords’ scions. You will align with none of them. You will be invisible. You will survive.”
 
 Kaelen bowed. “As you command, Father.”
-
-Which brings us back to... Inside was a single line,...

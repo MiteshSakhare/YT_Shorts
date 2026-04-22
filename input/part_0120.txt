@@ -1,7 +1,7 @@
 # Part 16: The First Stone
 
 NARRATOR:
-Looking down at the herald. "Tell your king that the Academy is not his to take. Tell him that the truce was broken by his own man, Captain Valerius, who fled rather than face the consequences. Tell him that the heretic he seeks is standing here, and that I will meet him on the field of battle if he wants me—but not before every innocent in this Academy has been given the chance to leave."
+Kaelen stepped onto the wall, looking down at the herald. "Tell your king that the Academy is not his to take. Tell him that the truce was broken by his own man, Captain Valerius, who fled rather than face the consequences. Tell him that the heretic he seeks is standing here, and that I will meet him on the field of battle if he wants me—but not before every innocent in this Academy has been given the chance to leave."
 
 The herald's face tightened. "You defy the king's command?"
 
@@ -16,5 +16,3 @@ That night, Kaelen stood in the courtyard, the defenders gathered around him.
 Seraphina was at his right hand, her armor gleaming, her golden eyes fierce. Rin was at his left, her dagger sheathed, her grin sharp. Elara stood behind them, her books abandoned, a sword she barely knew how to hold at her hip. Vex'ahlia was in the shadows, watching, waiting.
 
 And around them, the students—human, demon, Church—stood in the torchlight, their faces young, their hands trembling, their hearts full of something that might have been hope.
-
-Which brings us back to... Kaelen stepped onto the wall,...

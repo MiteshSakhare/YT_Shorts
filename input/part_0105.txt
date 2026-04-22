@@ -1,7 +1,7 @@
 # Part 14: The Heretic's Coronation
 
 NARRATOR:
-His mask.
+He reached up and removed his mask.
 
 The face beneath was old, lined with centuries, the eyes the color of weathered stone. A woman, Kaelen realized. The masked inquisitor had been a woman all along.
 
@@ -20,5 +20,3 @@ He took her hand.
 "I'll try," he said. "That's all I can promise. I'll try to be something other than what I was. I'll try to build something other than ashes. I'll try to be the king you're asking for."
 
 Mara smiled. "That's more than most kings ever promise."
-
-Which brings us back to... He reached up and removed...

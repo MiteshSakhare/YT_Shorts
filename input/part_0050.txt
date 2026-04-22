@@ -1,7 +1,7 @@
 # Part 8: The Tribunal
 
 NARRATOR:
-Mask without flinching. “I am Kaelen Vane. What sleeps inside me is my inheritance. Nothing more.”
+Kaelen met the blank white mask without flinching. “I am Kaelen Vane. What sleeps inside me is my inheritance. Nothing more.”
 
 The inquisitor’s head tilted. “Inheritance from whom? The Vane line has no history of black mana. The Valtiel line has no history of black mana. You are an anomaly. A deviation. And the Church does not tolerate deviations that threaten the peace.”
 
@@ -20,5 +20,3 @@ Vex’ahlia’s voice cut through the pandemonium like a blade. She stood at the
 She walked into the chamber, and the chaos subsided. Students froze. Cadets lowered their weapons. Even the demon lord judge inclined his head, a gesture of reluctant respect.
 
 “Commander,” the masked inquisitor rasped, struggling to his feet. “The heretic attacked me. He must be—”
-
-Which brings us back to... Kaelen met the blank white...

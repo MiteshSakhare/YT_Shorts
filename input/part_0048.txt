@@ -1,7 +1,7 @@
 # Part 8: The Tribunal
 
 NARRATOR:
-Masked inquisitor’s gloved hands tightened on the armrests of his chair.
+The chamber went silent. The masked inquisitor’s gloved hands tightened on the armrests of his chair.
 
 The human judge cleared her throat. “The tribunal is not here to debate Church procedures. We are here to determine whether you pose a threat to the Academy’s truce. Evidence will be presented. Witnesses will be called. You will have your chance to speak.”
 
@@ -14,5 +14,3 @@ Valerius’s voice was a growl. “The accused’s mana registered as corrupt du
 He turned to face the gallery, playing to the crowd. “This is not a student. This is a weapon. A weapon that the demon faction has been cultivating in secret. If we do not act now, the truce will not survive the month.”
 
 The demon judge’s sneer widened. “Consorting with known agitators? You mean his own cousin, Lady Seraphina Valtiel? By that logic, every demon student in this Academy is an agitator.”
-
-Which brings us back to... The chamber went silent. The...

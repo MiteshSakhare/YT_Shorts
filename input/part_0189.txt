@@ -1,7 +1,7 @@
 # Part 24: The Twice-Crowned King
 
 NARRATOR:
-Of Blackthorn, the Academy held a celebration.
+One year after the fall of Blackthorn, the Academy held a celebration.
 
 It was not a festival of victory. There were no banners proclaiming the defeat of enemies, no speeches about the glory of battle. It was a festival of building—the first stone of the new library laid beside the first stone of the new dormitories, the old walls torn down to make room for gardens, the children of humans and demons and Church acolytes planting trees in soil that had been ash for a hundred years.
 
@@ -20,5 +20,3 @@ She turned to face him, her golden eyes soft. “You promised my grandmother an 
 “I made a lot of promises I didn’t keep.”
 
 “You kept this one.” She touched the silver ring on his finger, the ring that had once been a chain, that had become a promise. “Not the way she expected. But you kept it.”
-
-Which brings us back to... One year after the fall...

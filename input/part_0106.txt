@@ -1,7 +1,7 @@
 # Part 14: The Heretic's Coronation
 
 NARRATOR:
-Factions, her voice rising. "The truce is broken. But something new can rise from its ashes. Kaelen Vane has offered us a choice—not war, not submission, but a chance to build something together. I, for one, am tired of fighting old wars. I choose to build."
+She turned to the assembled factions, her voice rising. "The truce is broken. But something new can rise from its ashes. Kaelen Vane has offered us a choice—not war, not submission, but a chance to build something together. I, for one, am tired of fighting old wars. I choose to build."
 
 She released his hand and stepped back, her place taken by Lord Malachar. The demon lord studied Kaelen with ancient, calculating eyes.
 
@@ -16,5 +16,3 @@ He stepped back, and the human ambassador stepped forward. Her face was pale, he
 "I don't know what you are. I don't know what you'll become. But I know you're not the monster they said you were. And for now, that's enough."
 
 One by one, the assembled leaders knelt—demon lords and Church inquisitors, human ambassadors and Academy faculty. The students followed, uncertain but hopeful, their fear giving way to something that might have been faith.
-
-Which brings us back to... She turned to the assembled...

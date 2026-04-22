@@ -36,7 +36,7 @@ python src/generate_short.py input/part_0001.txt 1
 
 ### Step 4: Generate All 225 Videos
 ```bash
-python src/batch_generator.py
+python batch_generate.py
 ```
 - Confirms all 225 scripts are ready
 - Displays generation plan
@@ -95,14 +95,14 @@ python src/generate_short.py input/part_0001.txt 1
 **Time:** ~2 minutes per video  
 **Output:** 1 production-ready YouTube Short (106.5s avg)
 
-#### **batch_generator.py** - Generate All 225 Videos
+#### **batch_generate.py** - Generate All 225 Videos
 ```bash
-python src/batch_generator.py
+python batch_generate.py
 ```
 **What it does:**
 - Reads all 225 scripts from `input/` folder
 - Generates videos with same quality as single mode
-- Supports resume if interrupted: `python src/batch_generator.py --resume SESSION_ID`
+- Supports resume if interrupted: `python batch_generate.py --resume`
 - Tracks progress in JSON checkpoints
 - All features enabled: mood detection, backgrounds, loop transitions, etc
 

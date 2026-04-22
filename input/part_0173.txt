@@ -1,7 +1,7 @@
 # Part 22: The Gathering Dark
 
 NARRATOR:
-Voice tight. “We have reports from a dozen villages. She’s been gathering Valerius’s followers, promising them a new crusade. She says the heretic who stopped the king’s army is a false prophet, that the true darkness is coming, that only by embracing it can the world be saved.”
+“The Oracle,” she said, her voice tight. “We have reports from a dozen villages. She’s been gathering Valerius’s followers, promising them a new crusade. She says the heretic who stopped the king’s army is a false prophet, that the true darkness is coming, that only by embracing it can the world be saved.”
 
 Lord Malachar’s scales rippled. “And what is this darkness she speaks of?”
 
@@ -16,5 +16,3 @@ The chamber went silent. Lady Ashford’s eyes widened. “You know this woman?�
 Vex’ahlia stepped out of the shadows. “The Oracle. I’ve heard the name before. She was a priestess in the Church, before the truce. She was the one who first recorded the prophecy of the twice-crowned king. She disappeared the same night Valerius fled the Academy.”
 
 Kaelen’s blood went cold. “She’s been planning this from the beginning. Valerius was a tool. The sword was a way to draw the darkness out. And now…” He looked at the map of the borderlands, at the fortress at Blackthorn marked in red. “Now she’s going to use it to start the war that Valerius couldn’t.”
-
-Which brings us back to... “The Oracle,” she said, her...

@@ -73,7 +73,7 @@ docs/
 ```
 src/
 ├── generate_short.py         ✅ Fixed loop bridge | 750+ lines
-├── batch_generator.py        ✅ Resume-capable batch processing
+├── batch_generate.py        ✅ Resume-capable batch processing
 ├── config.py                 ✅ Fully optimized settings
 ├── audio_processor.py        ✅ Character FX + normalization
 ├── background_engine.py      ✅ Pexels integration + mood matching

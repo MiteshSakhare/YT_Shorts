@@ -1,7 +1,7 @@
 # Part 8: The Tribunal
 
 NARRATOR:
-The guests of honor: Seraphina Valtiel, seated with the composure of a queen, flanked by Vorg and Lyss. Rin had found a spot near the railing, her legs dangling over the edge, her expression deceptively casual. Elara sat apart from the human faction, a notebook open on her lap, her dark eyes fixed on Kaelen with an intensity that bordered on devotion.
+And in the southern gallery, the guests of honor: Seraphina Valtiel, seated with the composure of a queen, flanked by Vorg and Lyss. Rin had found a spot near the railing, her legs dangling over the edge, her expression deceptively casual. Elara sat apart from the human faction, a notebook open on her lap, her dark eyes fixed on Kaelen with an intensity that bordered on devotion.
 
 Gaius was not in the gallery. He stood near the judge’s bench, his role undefined, his presence a question mark.
 
@@ -14,5 +14,3 @@ The human judge spoke first. “Kaelen Vane, heir to the Ducal House of Vane, yo
 Kaelen kept his voice steady, his posture relaxed. “Not guilty to both charges.”
 
 The masked inquisitor leaned forward. “You deny that your mana registered as corrupt during the initial test?”
-
-Which brings us back to... And in the southern gallery,...

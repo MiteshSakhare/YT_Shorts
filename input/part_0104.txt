@@ -1,7 +1,7 @@
 # Part 14: The Heretic's Coronation
 
 NARRATOR:
-Echoing on the stone, the weight of a thousand eyes on his back. Behind him, Seraphina led the demon students into the tunnels. Elara guided the humans to the library. Rin moved among the Church cadets, her presence a strange comfort, a reminder that hunger could be satisfied without violence.
+He walked alone, his footsteps echoing on the stone, the weight of a thousand eyes on his back. Behind him, Seraphina led the demon students into the tunnels. Elara guided the humans to the library. Rin moved among the Church cadets, her presence a strange comfort, a reminder that hunger could be satisfied without violence.
 
 And ahead, at the gates, the leaders of the three factions waited.
 
@@ -18,5 +18,3 @@ Kaelen stopped before them, the gates looming behind, the rising sun painting th
 Kaelen met the blank white mask without flinching. "Then you'll have to kill me. Here. Now. In front of everyone. And you'll have to explain why a boy who walked out of your prison with his hands empty was such a threat that you had to murder him in the dawn."
 
 The inquisitor was silent for a long moment. Then he laughed—a dry, brittle sound. "You're more dangerous than Valerius ever imagined. Not because of your power. Because of your patience."
-
-Which brings us back to... He walked alone, his footsteps...

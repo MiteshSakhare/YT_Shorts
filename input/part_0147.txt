@@ -1,7 +1,7 @@
 # Part 19: The Architecture of Peace
 
 NARRATOR:
-The chamber fell silent. He had not spoken in the council for weeks, and his voice still carried a weight that none of them could ignore.
+Kaelen raised a hand, and the chamber fell silent. He had not spoken in the council for weeks, and his voice still carried a weight that none of them could ignore.
 
 “Valerius wants a reaction. He wants us to move against him, to look like we’re suppressing dissent, to give his followers a reason to fight.” He looked at the delegates. “We don’t give him that. We investigate quietly. We secure the border. And we let him make the next move.”
 
@@ -20,5 +20,3 @@ It was not a perfect solution. It was not even a good one. But it was the first 
 That night, Kaelen found Elara in the library, her notebooks spread across the table, her face pale.
 
 “You heard about the attack,” he said, sitting across from her.
-
-Which brings us back to... Kaelen raised a hand, and...

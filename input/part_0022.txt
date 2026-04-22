@@ -1,7 +1,7 @@
 # Part 5: The Heretic’s Gambit
 
 NARRATOR:
-A heretic,” he said, his voice calm and clear. “On what evidence?”
+“You accuse me of being a heretic,” he said, his voice calm and clear. “On what evidence?”
 
 The scarred cadet’s eyes narrowed. “The Inquisition does not answer to—”
 
@@ -22,5 +22,3 @@ The voice came from behind the Church formation. The students parted, and Gaius 
 Valerius’s jaw tightened. “The boy’s mana registered as corrupt. You said so yourself.”
 
 “I said his mana was unusual.” Gaius’s pale eyes met Kaelen’s. “There is a difference. One that the Inquisition’s own protocols require a full investigation before action. You’ve given the demon faction a political weapon, Captain. Congratulations.”
-
-Which brings us back to... “You accuse me of being...

@@ -1,7 +1,7 @@
 # Part 19: The Architecture of Peace
 
 NARRATOR:
-Compromise.
+The council chambers were a compromise.
 
 The room had once been the Church’s tribunal hall—the same circular chamber where Kaelen had stood accused. But the silver braziers had been replaced with neutral flames, the stained-glass ceiling covered with plain white cloth, the tiered seating rearranged into a single circle. No head. No foot. No faction above another.
 
@@ -14,5 +14,3 @@ Vex’ahlia was not with the Church delegation. She stood near the wall, her arm
 “Then we’ll create one,” Kaelen said. He moved to the center of the circle, his voice carrying to every corner of the chamber. “The old system failed. The truce was a pause, not a peace. We have a chance now to build something that lasts. Something that doesn’t depend on fear or force.”
 
 Mara’s masked face tilted. “And you believe a council of equals will succeed where kings and inquisitors failed?”
-
-Which brings us back to... The council chambers were a...

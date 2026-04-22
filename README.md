@@ -14,13 +14,13 @@
 python src/generate_short.py input/part_0001.txt 1
 
 # 3. Generate all 225 videos (batch mode with resume)
-python src/batch_generator.py
+python batch_generate.py
 
 # 4. Generate specific range
-python src/batch_generator.py --start 50 --end 100
+python batch_generate.py --start 50 --end 100
 
 # 5. Resume interrupted batch
-python src/batch_generator.py --resume 20260412_094925
+python batch_generate.py --resume
 ```
 
 **Expected Time:** 
@@ -44,7 +44,7 @@ python src/batch_generator.py --resume 20260412_094925
 YT/
 ├── src/
 │   ├── generate_short.py       # Main video generation pipeline
-│   ├── batch_generator.py      # Batch processing with resume (NEW)
+│   ├── batch_generate.py      # Batch processing with resume (NEW)
 │   ├── config.py               # System configuration
 │   ├── mood_detector.py        # AI mood analysis
 │   ├── background_engine.py    # Pexels integration
@@ -168,10 +168,10 @@ python src/generate_short.py input/part_0001.txt 1
 python src/generate_short.py input/part_XXXX.txt N
 
 # All videos (batch mode with resume):
-python src/batch_generator.py
+python batch_generate.py
 
 # Resume if interrupted:
-python src/batch_generator.py --resume SESSION_ID
+python batch_generate.py --resume
 ```
 
 ### Step 4: Upload
@@ -191,7 +191,7 @@ python src/batch_generator.py --resume SESSION_ID
 | **Pexels API error** | Verify API key in `.env` file (not in `config.py`) |
 | **Memory issues** | Reduce parallel TTS: set `PARALLEL_TTS_WORKERS = 2` in config.py |
 | **Video encoding timeout** | Videos >2min: increase timeout in `config.py` `VIDEO_TIMEOUT` |
-| **Batch interrupted** | Resume with session ID: `python src/batch_generator.py --resume SESSIONID` |
+| **Batch interrupted** | Resume with session ID: `python batch_generate.py --resume` |
 
 For complete troubleshooting: See [docs/INDEX.md](docs/INDEX.md) FAQ
 
@@ -207,16 +207,16 @@ For complete troubleshooting: See [docs/INDEX.md](docs/INDEX.md) FAQ
 python src/generate_short.py input/part_0001.txt 1
 
 # Generate videos 1-50
-python src/batch_generator.py --start 1 --end 50
+python batch_generate.py --start 1 --end 50
 
 # Generate videos 100-150 (specific range)
-python src/batch_generator.py --start 100 --end 150
+python batch_generate.py --start 100 --end 150
 
 # Resume batch from checkpoint
-python src/batch_generator.py --resume 20260412_094925
+python batch_generate.py --resume
 
 # Batch with stop-on-error (tight testing)
-python src/batch_generator.py --error-handling stop
+python batch_generate.py --error-handling stop
 
 # List completed batches
 ls output/batch_progress_*.json

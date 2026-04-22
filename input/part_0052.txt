@@ -1,7 +1,7 @@
 # Part 8: The Tribunal
 
 NARRATOR:
-“Once, three hundred years ago. And that anomaly nearly destroyed the world.”
+“Once,” the masked inquisitor spat. “Once, three hundred years ago. And that anomaly nearly destroyed the world.”
 
 Vex’ahlia raised a hand. “The tribunal will adjourn for deliberation. The accused will be confined to his dormitory until a verdict is reached. Lady Seraphina will provide a full accounting of the Valtiel bloodline’s magical history. And Captain Valerius…” Her gaze shifted to the scarred captain, who had gone very pale. “…will explain to me why he launched an armed incursion without my authorization.”
 
@@ -22,5 +22,3 @@ He turned. Rin was perched on the sill, her auburn hair wind-tangled, her grin f
 “You’ll get in trouble.”
 
 “I live in trouble.” She landed on the floor in a crouch, then straightened, her eyes scanning the room. “Nice digs. Very… monastic. Where’s the other one? The human girl who smells like old books and secrets?”
-
-Which brings us back to... “Once,” the masked inquisitor spat....

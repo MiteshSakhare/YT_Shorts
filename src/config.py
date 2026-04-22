@@ -25,12 +25,23 @@ CACHE_DIR = BASE_DIR / ".cache"
 for _d in [INPUT_DIR, OUTPUT_DIR, TEMP_DIR, SFX_DIR, CACHE_DIR]:
     _d.mkdir(exist_ok=True)
 
+# Create logs directory
+LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
+
+# ─────────────────────────────────────────────────────────────
+#  CHANNEL & LOGGING SETTINGS
+# ─────────────────────────────────────────────────────────────
+CHANNEL_NAME = "Snippet Stories"          # Your YouTube channel name
+LOG_FILE = str(LOGS_DIR / "generate.log") # Log output file
+LOG_LEVEL = "INFO"                        # CRITICAL, ERROR, WARNING, INFO, DEBUG
+
 # ─────────────────────────────────────────────────────────────
 #  VIDEO SETTINGS
 # ─────────────────────────────────────────────────────────────
 VID_WIDTH = 1080              # YouTube Shorts width
 VID_HEIGHT = 1920             # YouTube Shorts height
-VID_FPS = 50                  # Frames per second
+VID_FPS = 60                  # Frames per second
 
 # Duration presets  ←  CHOOSE ONE
 DURATION_MODE = "unlimited"       # "unlimited" = full audio length (no hard cap)
@@ -150,10 +161,10 @@ CHARACTER_AUDIO_FX = {
 # ─────────────────────────────────────────────────────────────
 #  SUBTITLE SETTINGS (Viral karaoke style)
 # ─────────────────────────────────────────────────────────────
-WORDS_PER_CUE = 2                # Words shown at once (3 = more punchy)
-FONT_NAME = "Bangers"            # Viral YouTube Shorts font
-FONT_SIZE = 92                  # Large for mobile readability
-OUTLINE_WIDTH = 6                # Thick outline for contrast
+WORDS_PER_CUE = 4               # Words shown at once (4 is good for full context)
+FONT_NAME = "Bangers"           # Viral YouTube Shorts font
+FONT_SIZE = 82                  # Adjusted for 4 words per cue
+OUTLINE_WIDTH = 5               # Thick outline for contrast
 MARGIN_BOTTOM = 160              # Distance from bottom of frame
 SHADOW_DEPTH = 3                 # Shadow offset pixels
 SUBTITLE_GLOW = True             # Add glow effect behind text
@@ -183,7 +194,8 @@ CHARACTER_SUB_COLORS = {
 # Tier 1 = procedural (FFmpeg, works everywhere)
 # Tier 2 = Pexels stock footage (free API)
 # Tier 3 = ComfyUI AI generation (future)
-BG_TIER = 2                       # Start with Tier 2 (Pexels)
+# Tier 0 = Solid color / none
+BG_TIER = 2                       # Changed to Tier 2 to use context-based Pexels clips (dopamine/nature/cinematic)
 BG_CUSTOM_VIDEO = ""              # Path to custom background if needed
 
 # Mood → procedural background mapping (Tier 1)
@@ -204,14 +216,14 @@ PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "")
 
 # Mood → Pexels search terms
 PEXELS_SEARCH_TERMS = {
-    "dark":     ["dark forest fog", "shadows dark corridor", "dark smoke"],
-    "sad":      ["rain window cinematic", "dark ocean waves", "cloudy sky moody"],
-    "thrill":   ["fire sparks dark", "lightning storm night", "fast motion blur"],
-    "happy":    ["golden sunlight nature", "sunrise forest", "light particles"],
-    "epic":     ["mountain clouds aerial", "castle fortress dark", "storm clouds dramatic"],
-    "surprise": ["explosion light", "bright flash abstract", "energy particles"],
-    "mystery":  ["fog forest night", "dark tunnel light", "misty lake"],
-    "neutral":  ["abstract dark particles", "dark fantasy landscape", "cosmic stars nebula"],
+    "dark":     ["dark forest mist cinematic", "storm clouds time lapse", "dark ocean aerial", "ancient dark ruins architecture"],
+    "sad":      ["rain on glass cinematic", "gloomy towering mountains", "foggy landscape cinematic", "dark nature aerial"],
+    "thrill":   ["lightning strike slow motion", "fast moving clouds cinematic", "drone aerial city night", "flowing river dark"],
+    "happy":    ["golden hour nature drone", "sunlight through tall trees cinematic", "clear blue sky time lapse", "beautiful waterfalls cinematic"],
+    "epic":     ["epic mountain peaks aerial", "ancient castle fortress drone", "dramatic sunset clouds time lapse", "majestic architecture cinematic"],
+    "surprise": ["lightning storm cinematic nature", "light rays through clouds", "fast moving river nature"],
+    "mystery":  ["fog thick forest night", "dark architecture tunnel", "misty lake majestic aerial"],
+    "neutral":  ["beautiful nature landscape cinematic", "majestic drone view mountains", "ancient architecture aerial"],
 }
 
 # ─────────────────────────────────────────────────────────────
@@ -249,27 +261,56 @@ HOOK_DURATION = 3.0              # Seconds
 # ─────────────────────────────────────────────────────────────
 #  LOOP BRIDGE (2026 Algorithm Hack)
 # ─────────────────────────────────────────────────────────────
-ADD_LOOP_BRIDGE = True              # Audio loop bridge for seamless replay
-LOOP_BRIDGE_DURATION = 2.0        # Match loop_transition duration for seamless UX
+ADD_LOOP_BRIDGE = False             # ❌ DISABLED — Removes the confusing sound echo at the end
+LOOP_BRIDGE_DURATION = 3.5        # Increased to capture "Hey everyone! Welcome back..."
 
 # ─────────────────────────────────────────────────────────────
 #  2026 UPGRADE FEATURES (Critical Improvements)
 # ─────────────────────────────────────────────────────────────
 USE_REAL_TIME_DURATION = True          # Measure actual TTS output (±20ms accuracy)
-USE_FRAME_PERFECT_SUBTITLES = False    # Librosa speech detection for sync [WIP]
-ADD_LOOP_TRANSITION = True             # ✅ ENABLED — 2-3 second loop overlay for replay boost
-ADD_AI_DISCLOSURE = False              # ❌ DISABLED — Removes watermark, keeps cleaner look
-USE_CURATED_BACKGROUNDS = True         # Use curated library instead of random Pexels
+USE_FRAME_PERFECT_SUBTITLES = True     # Librosa speech detection for audio/subtitle sync
+ADD_LOOP_TRANSITION = False            # ❌ DISABLED — YouTube algorithm prefers hard cut loops over fade to black
+ADD_AI_DISCLOSURE = True               # ✅ ENABLED — YouTube 2026 compliance requirement
+USE_CURATED_BACKGROUNDS = False        # ❌ DISABLED — so Pexels API fetches dynamic weather, nature, structures
 
 AI_DISCLOSURE_POSITION = "top-right"   # or "bottom-left", "top-left", "bottom-right"
 AI_DISCLOSURE_OPACITY = 0.85           # 0.0 (transparent) to 1.0 (opaque)
 
 # ─────────────────────────────────────────────────────────────
-#  VIDEO ENCODING — Optimized for Smooth Playback on YouTube
+#  BACKGROUND CONTENT FILTERING (Safety & Quality)
+# ─────────────────────────────────────────────────────────────
+# Only allow these natural/fantasy content types
+ALLOWED_BACKGROUND_KEYWORDS = [
+    # Nature
+    "forest", "mountain", "landscape", "nature", "wilderness", "sky", "clouds",
+    "ocean", "sea", "river", "waterfall", "valley", "canyon", "desert",
+    "meadow", "field", "plains", "jungle", "rainforest", "cave", "peak", "volcano",
+    # Wildlife
+    "wildlife", "animal", "bird", "eagle", "wolf", "deer", "bear", "lion",
+    "elephant", "horse", "butterfly", "fish", "underwater", "whale", "eagle",
+    # Structures & Architecture
+    "castle", "temple", "ruins", "architecture", "fortress", "mansion",
+    "ancient", "historical", "monument", "stone", "bridge", "structure",
+    # Abstract/Fantasy-friendly
+    "abstract", "light", "fire", "smoke", "mist", "fog", "aurora", "space",
+    "galaxy", "stars", "nebula", "cosmos", "magical", "dark", "epic"
+]
+
+# REJECT backgrounds with these keywords (content safety)
+# Blocks humans, 3D particles, modern urban content, CGI
+BLACKLIST_BACKGROUND_KEYWORDS = [
+    "person", "people", "human", "face", "crowd", "street", "city",
+    "3d", "3d render", "3d particle", "cgi", "animation", "cartoon", "synthetic",
+    "car", "traffic", "urban", "modern", "office", "indoor", "room",
+    "render", "blender", "unreal", "engine", "gaming"
+]
+
+FILTER_BACKGROUND_CONTENT = True  # Enable content filtering for Pexels
+
 # ─────────────────────────────────────────────────────────────
 VIDEO_CODEC = "libx264"        # H.264 (universal YouTube compatibility)
-VIDEO_PRESET = "faster"        # faster = smoother motion, good quality/speed tradeoff
-VIDEO_CRF = 18                 # 18 = high quality (lower = better, 0-51 range)
+VIDEO_PRESET = "medium"        # 'medium' maximizes video quality
+VIDEO_CRF = 14                 # 14 = near visually lossless, ultra high quality (lower = better)
 AUDIO_CODEC = "aac"
 AUDIO_BITRATE = "192k"
 AUDIO_SAMPLE_RATE = "48000"
@@ -304,10 +345,15 @@ STORY_HASHTAGS = (
 # ─────────────────────────────────────────────────────────────
 #  INTRO & OUTRO (Channel Branding)
 # ─────────────────────────────────────────────────────────────
-ADD_INTRO = True                      # Add channel intro at start
-ADD_OUTRO = True                      # Add channel outro at end
-INTRO_DURATION = 2.0                   # Seconds
-OUTRO_DURATION = 2.0                   # Seconds
+ADD_INTRO = True                     # Enabled but upgraded to be fast and punchy
+ADD_OUTRO = True                     # Fast call to action at the end
+INTRO_DURATION = 1.5                   # Short 1.5 seconds so it doesn't kill retention
+OUTRO_DURATION = 1.5                   # Fast 1.5 seconds
+
+INTRO_VIDEO_PATH = BASE_DIR / "assets" / "intro.mp4"  # Path to intro video file
+USE_TEXT_INTRO = True                  # Generate text intro if no video file
+INTRO_TEXT = "The Twice-Crowned King. Part {part_num}."      # Text for intro overlay
+OUTRO_TEXT = "Follow for Part {part_num+1}!"
 INTRO_VIDEO_PATH = BASE_DIR / "assets" / "intro.mp4"  # Path to intro video file
 OUTRO_VIDEO_PATH = BASE_DIR / "assets" / "outro.mp4"  # Path to outro video file
 

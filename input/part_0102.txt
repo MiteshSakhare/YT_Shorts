@@ -1,7 +1,7 @@
 # Part 14: The Heretic's Coronation
 
 NARRATOR:
-Her bare feet silent on the bloodied stone, her tarnished-gold eyes fixed on Kaelen. She was unarmed, unarmored, her silver hair loose around her shoulders. Behind her, the Church's war machines stood silent, their operators uncertain, their purpose suddenly unclear.
+Vex'ahlia walked into the courtyard, her bare feet silent on the bloodied stone, her tarnished-gold eyes fixed on Kaelen. She was unarmed, unarmored, her silver hair loose around her shoulders. Behind her, the Church's war machines stood silent, their operators uncertain, their purpose suddenly unclear.
 
 "You've done what no one else could," she said, stopping before him. "You've shown them the truth. Not with words. With power." She tilted her head, studying him. "The question is: what will you do with it now?"
 
@@ -12,5 +12,3 @@ He raised his voice, addressing the crowd that had gathered—Church and demon a
 "The truce is broken. The Academy is burning. And every faction in this room is waiting for someone else to make the first move. To be the villain. To give them an excuse." He let his gaze sweep across them, seeing the fear, the anger, the desperate hope. "I've been that villain. I've burned cities and called it justice. I've slaughtered armies and called it peace. I know exactly what happens next if none of you chooses to stop."
 
 He stepped forward, and the crowd parted before him. "So I'm choosing. Not as the Demon Emperor. Not as a heretic. As someone who has been every monster you fear and is tired of being nothing else."
-
-Which brings us back to... Vex'ahlia walked into the courtyard,...

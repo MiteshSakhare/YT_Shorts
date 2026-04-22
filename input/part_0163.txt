@@ -1,7 +1,7 @@
 # Part 21: The Trial of Fire
 
 NARRATOR:
-“Valerius was wrong. He committed atrocities. He nearly started a war. But he was also a man who was used—by his own fear, by the darkness in that sword, by a system that taught him to see enemies instead of people. If we execute him, we prove him right. We prove that this council is just another court of vengeance. But if we give him a chance—a real chance—to face what he’s done, to be judged by the people he hurt, to live with the consequences… then we prove that we are something new.”
+He turned to the delegates. “Valerius was wrong. He committed atrocities. He nearly started a war. But he was also a man who was used—by his own fear, by the darkness in that sword, by a system that taught him to see enemies instead of people. If we execute him, we prove him right. We prove that this council is just another court of vengeance. But if we give him a chance—a real chance—to face what he’s done, to be judged by the people he hurt, to live with the consequences… then we prove that we are something new.”
 
 Lady Ashford’s voice was sharp. “You ask us to show mercy to a murderer?”
 
@@ -16,5 +16,3 @@ All eyes turned to Lady Ashford. Her face was pale, her hands clenched on the ta
 “The human delegation agrees,” she said quietly. “Let the victims speak.”
 
 Valerius stared at Kaelen, his eyes bright with something that might have been tears. “Why?” he whispered. “Why are you doing this?”
-
-Which brings us back to... He turned to the delegates....
