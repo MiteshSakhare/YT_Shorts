@@ -507,9 +507,50 @@ def generate_scene_backgrounds(
                 for q in config.PEXELS_SEARCH_TERMS.get(mood, config.PEXELS_SEARCH_TERMS["neutral"])
             ]
 
+            # ── Context-Aware Location Keywords (fuzzy multi-match) ──
+            # Check if ANY word from a location key appears in the scene text.
+            # This catches paraphrases like "polished mahogany" → "mahogany" key.
+            group_text = group.get("text", "").lower()
+            location_candidates = []
+            for loc_key, loc_query in getattr(config, "LOCATION_KEYWORDS", {}).items():
+                # Fuzzy: check if ANY word from the key is in the text
+                key_words = loc_key.lower().split()
+                if any(kw in group_text for kw in key_words):
+                    location_candidates.append(loc_query)
+                    logger.debug(f"      Location match: '{loc_key}' → '{loc_query}'")
+
+            # Prioritize scene-specific queries OVER generic mood queries
+            if location_candidates:
+                candidates = location_candidates + candidates
+
             fresh = [q for q in candidates if q not in used_queries] or candidates
             query = random.choice(fresh)
             used_queries.add(query)
+
+            # ── CURATED BACKGROUND LIBRARY OVERRIDE ──
+            # Check if there is a local file in assets/backgrounds that matches mood or location
+            local_clip = None
+            curated_dir = Path("assets/backgrounds")
+            if curated_dir.exists():
+                search_terms = [mood] + [k.replace(" ", "_") for k in getattr(config, "LOCATION_KEYWORDS", {}).keys()]
+                for term in search_terms:
+                    term_dir = curated_dir / term
+                    if term_dir.exists():
+                        local_files = list(term_dir.glob("*.mp4"))
+                        if local_files:
+                            local_clip = str(random.choice(local_files))
+                            logger.info(f"   [{i+1}] 📁 Using CuratedBackgroundLibrary clip: {local_clip}")
+                            break
+            
+            if local_clip:
+                if first_clip_raw is None:
+                    first_clip_raw = local_clip
+                if _prepare_pexels_video(local_clip, dur, clip_path):
+                    clip_paths.append(clip_path)
+                    logger.info(f"   [{i+1}] ✅ Curated clip ready")
+                    continue
+                else:
+                    logger.warning(f"   [{i+1}] ⚠️  Failed to prepare curated clip, falling back to Pexels")
 
             logger.info(f"   [{i+1}] Pexels: '{query}'…")
             url = _search_pexels_video(query)

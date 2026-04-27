@@ -230,10 +230,14 @@ def create_synced_subtitles(
                 style = "Outro"
             else:
                 style = "Narrator" if speaker.lower() == "narrator" else "Default"
+
+            start_str = sec_to_ass(start_time)
+            end_str = sec_to_ass(end_time)
+            ass_line = (
                 f"Dialogue: 0,{start_str},{end_str},"
                 f"{style},,0,0,0,,"
                 f"{text}"
-            
+            )
             ass_lines.append(ass_line)
         
         # Write ASS file

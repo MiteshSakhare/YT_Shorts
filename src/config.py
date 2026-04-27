@@ -21,8 +21,9 @@ OUTPUT_DIR = BASE_DIR / "output"
 TEMP_DIR = BASE_DIR / ".temp"
 SFX_DIR = BASE_DIR / "sfx"
 CACHE_DIR = BASE_DIR / ".cache"
+ASSETS_DIR = BASE_DIR / "assets"
 
-for _d in [INPUT_DIR, OUTPUT_DIR, TEMP_DIR, SFX_DIR, CACHE_DIR]:
+for _d in [INPUT_DIR, OUTPUT_DIR, TEMP_DIR, SFX_DIR, CACHE_DIR, ASSETS_DIR]:
     _d.mkdir(exist_ok=True)
 
 # Create logs directory
@@ -58,6 +59,42 @@ TARGET_WORDS = DURATION_SETTINGS[DURATION_MODE]["target_words"]
 #  These stay CONSISTENT across ALL 48+ parts
 #  See all voices: edge-tts --list-voices
 # ─────────────────────────────────────────────────────────────
+
+# USE_LOCAL_TTS: If True, uses locally hosted AI voice generation
+# (e.g. Kokoro-TTS) for emotional, cloned inflections.
+# Requires: pip install kokoro soundfile torch
+USE_LOCAL_TTS = True
+
+# Local Kokoro-TTS voices (requires the Kokoro v1.0 voicepacks)
+# "am" = American Male, "af" = American Female, "bm" = British Male, etc.
+KOKORO_VOICES = {
+    # ── Main Characters ──────────────────────────────────────
+    "narrator":     "af_bella",       # Rich, dramatic female narrator
+    "kaelen":       "am_puck",        # Deep, calm male protagonist
+    "seraphina":    "bf_emma",        # Elegant British female
+    "rin":          "af_nicole",      # Playful energetic female
+    "elara":        "af_sarah",       # Warm thoughtful female
+    "vex'ahlia":    "af_sky",         # Mysterious female
+    # ── Secondary Characters ──────────────────────────────────
+    "morwen":       "af_alloy",       # Stern female
+    "valerius":     "am_eric",        # Arrogant male
+    "gaius":        "bm_george",      # Wise British male
+    "malachar":     "am_michael",     # Dark villain male
+    "mara":         "af_alloy",       # Cold female
+    "aldric":       "bm_lewis",       # Commanding male (The Lion)
+    "duke":         "am_puck",        # Noble male
+    "herald":       "am_adam",        # Formal male
+    "guard":        "am_adam",        # Soldier male
+    "instructor":   "am_michael",     # Teacher male
+    "oracle":       "af_sky",         # Mystical female
+    "arcturus":     "am_puck",        # Emperor's past voice
+    "commander":    "am_michael",     # Military male
+    "council":      "bm_george",      # Council member
+    "inquisitor":   "af_alloy",       # Inquisitor female
+    # ── Fallback ──────────────────────────────────────────────
+    "_default":     "af_bella",       # Default fallback
+}
+
 VOICES = {
     # ── Main Characters ──────────────────────────────────────
     "narrator":     "en-US-AriaNeural",       # Rich, dramatic female narrator
@@ -88,9 +125,9 @@ VOICES = {
 
 # Voice style modifiers — rate and pitch per character
 VOICE_STYLE = {
-    "narrator":     {"rate": "+0%",  "pitch": "+0Hz"},     # Natural cinematic
-    "kaelen":       {"rate": "-5%",  "pitch": "-5Hz"},     # Slower, deeper
-    "seraphina":    {"rate": "+0%",  "pitch": "+5Hz"},     # Elevated elegant
+    "narrator":     {"rate": "+25%", "pitch": "+0Hz"},     # Natural cinematic (fast-paced for retention)
+    "kaelen":       {"rate": "+25%", "pitch": "+0Hz"},     # Slower, deeper (sped up for retention)
+    "seraphina":    {"rate": "+20%", "pitch": "+5Hz"},     # Elevated elegant
     "rin":          {"rate": "+10%", "pitch": "+10Hz"},    # Fast, bright
     "elara":        {"rate": "-5%",  "pitch": "+0Hz"},     # Thoughtful pacing
     "vex'ahlia":    {"rate": "-8%",  "pitch": "-3Hz"},     # Ominous slow
@@ -299,11 +336,79 @@ ALLOWED_BACKGROUND_KEYWORDS = [
 # REJECT backgrounds with these keywords (content safety)
 # Blocks humans, 3D particles, modern urban content, CGI
 BLACKLIST_BACKGROUND_KEYWORDS = [
-    "person", "people", "human", "face", "crowd", "street", "city",
-    "3d", "3d render", "3d particle", "cgi", "animation", "cartoon", "synthetic",
-    "car", "traffic", "urban", "modern", "office", "indoor", "room",
-    "render", "blender", "unreal", "engine", "gaming"
+    # Humans & Body Parts (CRITICAL)
+    "person", "people", "human", "face", "crowd", "man", "woman", "child", 
+    "hands", "feet", "portrait", "walking", "talking", "couple", "tourist",
+    "model", "girl", "boy",
+    
+    # Modern & Urban (Breaks Fantasy Immersion)
+    "street", "city", "car", "traffic", "urban", "modern", "office", 
+    "indoor", "room", "phone", "computer", "building", "neon", "skyscraper",
+    "road", "highway", "laptop", "glass building", "subway",
+    
+    # Fake / Copyright / Unwanted Styles
+    "3d", "3d render", "3d particle", "cgi", "animation", "cartoon", 
+    "synthetic", "render", "blender", "unreal", "engine", "gaming", 
+    "anime", "illustration", "drawing", "text", "watermark", "logo",
+    
+    # Unwanted Perspectives
+    "timelapse", "hyperlapse", "vlog", "selfie"
 ]
+
+LOCATION_KEYWORDS = {
+    # ── Kaelen's Past & The Betrayal ──
+    "obsidian fortress": "dark jagged stone castle stormy sky scenery nobody",
+    "demon realm": "volcanic ash landscape dark sky scenery nobody",
+    "dark throne": "ancient empty dark throne room stone scenery nobody",
+    "battlefield": "foggy desolate battlefield ruins landscape scenery nobody",
+    "holy sword": "sunlight breaking through dark clouds cinematic nobody",
+    
+    # ── Rebirth & The Ducal Estate ──
+    "blinding white": "abstract ethereal white light clouds scenery nobody",
+    "mahogany room": "vintage luxurious dark wood room interior scenery nobody",
+    "chandelier": "elegant crystal chandelier dark room interior nobody",
+    "manor": "grand ancient medieval mansion exterior scenery nobody",
+    "estate": "beautiful vast medieval estate gardens scenery nobody",
+    "study": "ancient dusty library old books candle light scenery nobody",
+    
+    # ── The Magic Academy (Interiors) ──
+    "academy": "grand historical university architecture exterior scenery nobody",
+    "classroom": "ancient empty gothic classroom wood desks scenery nobody",
+    "library": "massive ancient library towering bookshelves scenery nobody",
+    "hallway": "dark stone castle corridor arches scenery nobody",
+    "dormitory": "simple medieval stone room window light scenery nobody",
+    "dining hall": "grand long wooden table medieval feast hall scenery nobody",
+    
+    # ── The Magic Academy (Exteriors) ──
+    "courtyard": "ancient stone courtyard gothic architecture scenery nobody",
+    "training ground": "empty medieval dirt training yard weapons scenery nobody",
+    "arena": "ancient roman colosseum ruins sand scenery nobody",
+    "gates": "massive iron gates ancient castle entrance scenery nobody",
+    
+    # ── Nature & The Borderlands ──
+    "dark forest": "creepy dark misty pine forest trees scenery nobody",
+    "bright forest": "sunlight shining through green forest trees scenery nobody",
+    "mountains": "majestic snow capped mountain peaks aerial scenery nobody",
+    "valley": "beautiful green valley river landscape scenery nobody",
+    "river": "fast flowing dark river nature landscape scenery nobody",
+    "waterfall": "epic tall waterfall jungle nature scenery nobody",
+    "borderlands": "desolate barren wasteland landscape stormy scenery nobody",
+    "cave": "dark mysterious underground cave tunnel scenery nobody",
+    "ruins": "ancient forgotten stone temple ruins overgrown scenery nobody",
+    
+    # ── The Royal Capital & The Church ──
+    "capital": "epic medieval city aerial view sunset scenery nobody",
+    "palace": "gleaming white marble palace exterior scenery nobody",
+    "royal court": "grand majestic marble hall pillars scenery nobody",
+    "golden throne": "luxurious golden throne room bright light scenery nobody",
+    "cathedral": "massive gothic church interior stained glass scenery nobody",
+    "sanctuary": "peaceful holy temple interior sunlight scenery nobody",
+    
+    # ── Abstract & Magic Elements ──
+    "void": "dark swirling abstract smoke particles scenery nobody",
+    "magic circle": "glowing abstract magical energy particles scenery nobody"
+}
+
 
 FILTER_BACKGROUND_CONTENT = True  # Enable content filtering for Pexels
 
@@ -343,36 +448,39 @@ STORY_HASHTAGS = (
 )
 
 # ─────────────────────────────────────────────────────────────
-#  INTRO & OUTRO (Channel Branding)
+#  INTRO & OUTRO (DISABLED — kills retention)
+#  Branding is now visual-only: watermark + CTA overlay
 # ─────────────────────────────────────────────────────────────
-ADD_INTRO = True                     # Enabled but upgraded to be fast and punchy
-ADD_OUTRO = True                     # Fast call to action at the end
-INTRO_DURATION = 1.5                   # Short 1.5 seconds so it doesn't kill retention
-OUTRO_DURATION = 1.5                   # Fast 1.5 seconds
-
-INTRO_VIDEO_PATH = BASE_DIR / "assets" / "intro.mp4"  # Path to intro video file
-USE_TEXT_INTRO = True                  # Generate text intro if no video file
-INTRO_TEXT = "The Twice-Crowned King. Part {part_num}."      # Text for intro overlay
-OUTRO_TEXT = "Follow for Part {part_num+1}!"
-INTRO_VIDEO_PATH = BASE_DIR / "assets" / "intro.mp4"  # Path to intro video file
-OUTRO_VIDEO_PATH = BASE_DIR / "assets" / "outro.mp4"  # Path to outro video file
-
-# If video files don't exist, use text-based branding instead
-USE_TEXT_INTRO = True                  # Generate text intro if no video file
-USE_TEXT_OUTRO = True                  # Generate text outro if no video file
-INTRO_TEXT = f"👑 {CHANNEL_NAME}"      # Text for intro overlay
-OUTRO_TEXT = f"Subscribe to {CHANNEL_NAME}"  # Text for outro overlay
-BRANDING_FONT_SIZE = 92               # Size of branding text
-BRANDING_TEXT_COLOR = "&H0000FFFF"     # Yellow text (ASS format)
-BRANDING_BACKGROUND_COLOR = "black"    # Background: black, navy, purple, etc.
+ADD_INTRO = False                    # ❌ DISABLED — spoken intros cause instant swipe
+ADD_OUTRO = False                    # ❌ DISABLED — spoken outros destroy loop bridge
 
 # ─────────────────────────────────────────────────────────────
-#  CHANNEL WATERMARK (Always visible frame corner)
+#  INTEGRATED CTA OVERLAY (visual only, during climax)
+#  Shows text on screen during the final seconds WITHOUT
+#  stopping the story or breaking the audio flow
 # ─────────────────────────────────────────────────────────────
-SHOW_CHANNEL_WATERMARK = False          # Show channel name watermark
+SHOW_CTA_OVERLAY = True              # ✅ Flash CTA text during the final seconds
+CTA_TEXT = "Like & Subscribe for Part {next_part}!"
+CTA_DURATION = 3.0                   # seconds, shown at the very end
+CTA_FONT_SIZE = 52                   # Readable but not obnoxious
+CTA_COLOR = "&H0000FFFF"             # Yellow (ASS format)
+
+# ─────────────────────────────────────────────────────────────
+#  PART TAG (top-left, first 4 seconds)
+#  Viewers intuitively go to your channel to find Part 2
+# ─────────────────────────────────────────────────────────────
+SHOW_PART_TAG = True                 # ✅ Show "Part N" in the first seconds
+PART_TAG_DURATION = 4.0              # seconds visible
+
+# ─────────────────────────────────────────────────────────────
+#  CHANNEL WATERMARK (Always visible — replaces spoken intro)
+# ─────────────────────────────────────────────────────────────
+SHOW_CHANNEL_WATERMARK = True          # ✅ ENABLED — persistent visual branding
+WATERMARK_IMAGE = ASSETS_DIR / "watermark.png"  # Use channel watermark image
 WATERMARK_POSITION = "top-left"        # "top-left", "top-right", "bottom-left", "bottom-right"
-WATERMARK_STYLE = "simple"             # "simple" (text only) or "badge" (with background)
-WATERMARK_OPACITY = 0.75               # 0.0 (transparent) to 1.0 (opaque)
+WATERMARK_SCALE = 120                  # Width in pixels (height auto-scaled)
+WATERMARK_OPACITY = 0.70               # 0.0 (transparent) to 1.0 (opaque)
+WATERMARK_MARGIN = 30                  # Pixels from edge
 
 # ─────────────────────────────────────────────────────────────
 #  LOGGING

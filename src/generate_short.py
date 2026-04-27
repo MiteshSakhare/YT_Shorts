@@ -273,7 +273,7 @@ def create_frame_perfect_subtitles(
         S = librosa.feature.melspectrogram(y=y, sr=sr)
         S_db = librosa.power_to_db(S, ref=np.max)
         onset_env = librosa.onset.onset_strength(S=S_db)
-        onset_frames = librosa.onset.onset_detect(onset_env=onset_env, backtrack=True)
+        onset_frames = librosa.onset.onset_detect(onset_envelope=onset_env, backtrack=True)
         onset_times = librosa.frames_to_time(onset_frames, sr=sr)
         
         # Build ASS file with detected speech boundaries
@@ -776,6 +776,7 @@ async def generate_tts_segment(
     UPGRADED:
       • Natural pause injection at punctuation
       • Emotion-aware rate/pitch based on story position
+      • Local TTS Integration (Kokoro / XTTSv2)
     """
     # Strip emojis and newlines so the TTS engine does not read them aloud (redundant but safe)
     text = text.replace('\\N', ' ').replace('\\n', ' ')
@@ -787,6 +788,38 @@ async def generate_tts_segment(
     # Compute emotion-aware prosody (overrides static config)
     emo_rate, emo_pitch = _get_emotional_prosody(character, text, segment_position)
 
+    # Use local Kokoro-TTS if configured, otherwise fallback to Edge-TTS
+    if getattr(config, "USE_LOCAL_TTS", False):
+        try:
+            try:
+                # Works when running as module: `python -m src.generate_short ...`
+                from src.local_tts import generate_kokoro_audio
+            except ImportError:
+                # Works when running as script: `python src/generate_short.py ...`
+                from local_tts import generate_kokoro_audio
+            # Map edge-tts rates like +10% to kokoro floats like 1.1
+            speed = 1.0
+            if emo_rate.endswith('%'):
+                speed += float(emo_rate.strip('%')) / 100.0
+                
+            # Use configured kokoro voicepack, fallback to Edge translation
+            kokoro_voice = getattr(config, "KOKORO_VOICES", {}).get(character, 'am_adam')
+
+            logger.info(f"   🎤 Using KOKORO TTS for {character} (voice={kokoro_voice}, speed={speed:.1f})")
+            result = generate_kokoro_audio(
+                text=processed,
+                voice=kokoro_voice,
+                speed=max(0.5, min(2.0, speed)),
+                output_path=output_path
+            )
+            logger.info(f"   ✅ Kokoro TTS success for {character}")
+            return result
+        except Exception as e:
+            logger.warning(f"⚠️ Kokoro TTS FAILED for {character}: {e}. Falling back to Edge-TTS.")
+
+    logger.info(f"   🔊 Using Edge-TTS for {character} (voice={voice})")
+
+    # Edge-TTS fallback
     communicate = edge_tts.Communicate(processed, voice, rate=emo_rate, pitch=emo_pitch)
     timings = []
 
@@ -954,35 +987,64 @@ def generate_subtitles(
     OUTLINE_W     = config.OUTLINE_WIDTH
     LETTER_SPC    = 1.5       # px letter spacing
 
-    # Group words into cues
+    # Group words into cues using NATURAL BOUNDARIES (not blind word-count slicing)
+    # This prevents awkward mid-sentence breaks like "The Twice-Crowned King A"
     cues = []
-    i    = 0
-    while i < len(word_timings):
-        # We group based on WORDS_PER_CUE, using the config settings instead of hardcoding 2
-        group = word_timings[i : i + WORDS_PER_CUE]
-        if not group:
-            break
-            
-        start_t = group[0]["start"]
-        end_t = group[-1]["end"]
-        
-        # KEY SYNC FIX: If there is another word after this cue, the subtitle should remain 
-        # on screen until the next word starts (or cap it at max +1s for dramatic pauses).
-        if i + WORDS_PER_CUE < len(word_timings):
-            next_start = word_timings[i + WORDS_PER_CUE]["start"]
-            # Fill the gap up to 1.5 seconds maximum (to avoid lingering too long on silence)
-            end_t = min(next_start, end_t + 1.5)
+    buffer = []
+
+    for wt in word_timings:
+        buffer.append(wt)
+        word = wt["word"]
+
+        # Check for natural break point: punctuation at end of word
+        has_punctuation = any(word.rstrip().endswith(p) for p in ('.', ',', ';', ':', '!', '?', '—', '...'))
+
+        # Decide when to flush the buffer into a cue:
+        #   - At punctuation boundaries (when buffer has at least 2 words)
+        #   - When buffer hits max word count (hard cap)
+        #   - Never break with only 1 word (looks choppy)
+        should_break = (
+            (has_punctuation and len(buffer) >= 2)
+            or len(buffer) >= WORDS_PER_CUE
+        )
+
+        if should_break:
+            start_t = buffer[0]["start"]
+            end_t = buffer[-1]["end"]
+
+            cues.append({
+                "start":   start_t,
+                "end":     end_t,
+                "words":   buffer,
+                "speaker": buffer[0].get("speaker", "narrator"),
+            })
+            buffer = []
+
+    # Flush remaining words
+    if buffer:
+        if cues and len(buffer) <= 2:
+            # Merge tiny orphan into the last cue (avoids dangling 1-word subtitle)
+            cues[-1]["words"].extend(buffer)
+            cues[-1]["end"] = buffer[-1]["end"]
         else:
-            # Add a slight padding for the very last cue
-            end_t += 0.5
-            
-        cues.append({
-            "start":   start_t,
-            "end":     end_t,
-            "words":   group,
-            "speaker": group[0].get("speaker", "narrator"),
-        })
-        i += WORDS_PER_CUE
+            start_t = buffer[0]["start"]
+            end_t = buffer[-1]["end"]
+            cues.append({
+                "start":   start_t,
+                "end":     end_t,
+                "words":   buffer,
+                "speaker": buffer[0].get("speaker", "narrator"),
+            })
+
+    # Fix timing gaps: each cue should stay on screen until the next cue starts
+    for idx in range(len(cues) - 1):
+        next_start = cues[idx + 1]["start"]
+        # Fill the gap up to 1.5 seconds max (avoid lingering during silence)
+        cues[idx]["end"] = min(next_start, cues[idx]["end"] + 1.5)
+
+    # Add slight padding for the very last cue
+    if cues:
+        cues[-1]["end"] += 0.5
 
     # ── ASS header ────────────────────────────────────────────
     lines = [
@@ -1000,21 +1062,22 @@ def generate_subtitles(
         "Alignment, MarginL, MarginR, MarginV, Encoding",
     ]
 
-    # Character → (primary_colour, karaoke_secondary_colour)
+    # Character → (primary_colour_spoken, karaoke_secondary_colour_unspoken)
+    # Primary is what \kf TURNS INTO. Secondary is what it STARTS AS.
     # ASS colours: &HAABBGGRR  (alpha, blue, green, red in hex)
     CHAR_COLORS = {
-        "narrator":   ("&H00FFFFFF", "&H0000FFFF"),  # White → Cyan
-        "kaelen":     ("&H00FFFFFF", "&H002080FF"),  # White → Amber-orange
-        "seraphina":  ("&H00FFFFFF", "&H0040FF40"),  # White → Bright green
-        "rin":        ("&H00FFFFFF", "&H00FF80FF"),  # White → Hot pink
-        "malachar":   ("&H00FFFFFF", "&H000040FF"),  # White → Vivid red
-        "elara":      ("&H00FFFFFF", "&H00FFCC00"),  # White → Sky blue
-        "vex'ahlia":  ("&H00FFFFFF", "&H00CC44CC"),  # White → Purple
-        "aldric":     ("&H00FFFFFF", "&H000088FF"),  # White → Gold
-        "valerius":   ("&H00FFFFFF", "&H000055EE"),  # White → Coral red
-        "gaius":      ("&H00FFFFFF", "&H0088FFCC"),  # White → Teal
-        "oracle":     ("&H00FFFFFF", "&H00FF44FF"),  # White → Magenta
-        "_default":   ("&H00FFFFFF", "&H0000FFFF"),  # White → Cyan
+        "narrator":   ("&H0000FFFF", "&H00FFFFFF"),  # Starts White → Turns Cyan
+        "kaelen":     ("&H002080FF", "&H00FFFFFF"),  # Starts White → Turns Amber-orange
+        "seraphina":  ("&H0040FF40", "&H00FFFFFF"),  # Starts White → Turns Bright green
+        "rin":        ("&H00FF80FF", "&H00FFFFFF"),  # Starts White → Turns Hot pink
+        "malachar":   ("&H000040FF", "&H00FFFFFF"),  # Starts White → Turns Vivid red
+        "elara":      ("&H00FFCC00", "&H00FFFFFF"),  # Starts White → Turns Sky blue
+        "vex'ahlia":  ("&H00CC44CC", "&H00FFFFFF"),  # Starts White → Turns Purple
+        "aldric":     ("&H000088FF", "&H00FFFFFF"),  # Starts White → Turns Gold
+        "valerius":   ("&H000055EE", "&H00FFFFFF"),  # Starts White → Turns Coral red
+        "gaius":      ("&H0088FFCC", "&H00FFFFFF"),  # Starts White → Turns Teal
+        "oracle":     ("&H00FF44FF", "&H00FFFFFF"),  # Starts White → Turns Magenta
+        "_default":   ("&H0000FFFF", "&H00FFFFFF"),  # Starts White → Turns Cyan
     }
 
     BACK_COLOR = "&HAA000000"   # Semi-transparent dark box
@@ -1063,7 +1126,14 @@ def generate_subtitles(
             # Final sweep for any remaining emojis before subtitle rendering
             word = re.sub(r'[\U0001f300-\U0001f650\U0001f680-\U0001f6A0\U0001f900-\U0001f9FF\u2600-\u26FF\u2700-\u27BF]', '', word)
             
-            parts.append("{\\kf" + str(dur_cs) + "}" + word)
+            # Since ASS V4+ Karaoke \kf changes from SecondaryColour to PrimaryColour:
+            # We want it to be White (unspoken) and turn Cyan (spoken).
+            # So the style is Primary=Cyan, Secondary=White.
+            # \kf smoothly transitions them.
+            # Avoid using \fscx animations here as they affect all remaining text on the line,
+            # causing severe stutter/jitter.
+            pop_tag = f"{{\\kf{dur_cs}}}"
+            parts.append(pop_tag + word)
 
         text    = " ".join(parts)
         speaker = cue.get("speaker", "narrator")
@@ -1459,136 +1529,331 @@ def add_loop_bridge(audio_path: str, output_path: str) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  VIDEO COMPOSITION (Final Assembly)
+#  SFX TIMELINE MIXING (Fix 3: Actually place SFX on the audio timeline)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def mix_sfx_into_audio(
+    voice_path: str,
+    mood_sfx: Dict,
+    segments: List[Dict],
+    total_dur: float,
+    output_path: str,
+) -> str:
+    """
+    Layer mood-based SFX onto the voice audio at appropriate timeline positions.
+
+    Strategy:
+      - Place transition SFX (whoosh) at mood-change boundaries
+      - Place accent SFX (boom, whisper) at first segment of each mood group
+      - Mix at 30% volume so SFX enhances but doesn't overpower voice
+    """
+    if not mood_sfx:
+        logger.info("   ⏭  No SFX available for this mood — skipping SFX mix")
+        return voice_path
+
+    # Find SFX files to use
+    sfx_files = []
+    for sfx_type, sfx_path in mood_sfx.items():
+        if os.path.exists(sfx_path):
+            sfx_files.append((sfx_type, sfx_path))
+
+    if not sfx_files:
+        logger.info("   ⏭  No SFX files found on disk — skipping SFX mix")
+        return voice_path
+
+    # Calculate placement timestamps: evenly distribute SFX across the timeline
+    # Place one accent at ~25%, one transition at ~50%, one accent at ~75%
+    placements = []
+    timestamps = [total_dur * 0.25, total_dur * 0.50, total_dur * 0.75]
+
+    for i, ts in enumerate(timestamps):
+        sfx_type, sfx_path = sfx_files[i % len(sfx_files)]
+        placements.append((ts, sfx_path, sfx_type))
+
+    if not placements:
+        return voice_path
+
+    # Build FFmpeg command to layer SFX onto voice audio
+    inputs = ["-i", voice_path]
+    filter_parts = []
+
+    for idx, (ts, sfx_path, sfx_type) in enumerate(placements):
+        inputs += ["-i", sfx_path]
+        input_idx = idx + 1
+        # Delay each SFX to its timestamp, lower volume to 30%
+        delay_ms = int(ts * 1000)
+        filter_parts.append(
+            f"[{input_idx}:a]volume=0.3,adelay={delay_ms}|{delay_ms}[sfx{idx}]"
+        )
+
+    # Mix all SFX with the voice without auto-normalizing volume (which crushes voice)
+    sfx_labels = "".join(f"[sfx{i}]" for i in range(len(placements)))
+    mix_inputs = len(placements) + 1  # voice + all SFX
+    filter_parts.append(
+        f"[0:a]{sfx_labels}amix=inputs={mix_inputs}:duration=first:normalize=0[out]"
+    )
+
+    filter_complex = "; ".join(filter_parts)
+
+    cmd = ["ffmpeg", "-y"] + inputs + [
+        "-filter_complex", filter_complex,
+        "-map", "[out]",
+        "-c:a", "pcm_s16le",
+        "-ar", config.AUDIO_SAMPLE_RATE,
+        output_path,
+    ]
+
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if r.returncode == 0:
+            logger.info(f"   ✅ SFX mixed — {len(placements)} effects placed on timeline")
+            return output_path
+        else:
+            logger.warning(f"⚠️  SFX mixing failed: {r.stderr[:200]}")
+            return voice_path
+    except subprocess.TimeoutExpired:
+        logger.warning("⚠️  SFX mixing timed out — using voice-only audio")
+        return voice_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  VIDEO COMPOSITION — 2-PASS PIPELINE (Fix 6)
+#
+#  Pass 1: Video + Visual Overlays (subs, hook, watermark, CTA, progress bar)
+#    → intermediate.mp4  (no audio)
+#
+#  Pass 2: Audio Mix (voice + music with ducking) → merge with video
+#    → final.mp4  (uses -c:v copy = no re-encode = 10x faster)
+#
+#  Benefits:
+#    • Each pass is independently debuggable
+#    • Filter graph strings are much shorter (no Windows cmd limit issues)
+#    • Pass 2 is nearly instant (no video re-encoding)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def compose_video(
     bg_video: str, audio: str, subtitles: str, hook_img: str,
-    music: str, output: str, duration: float
+    music: str, output: str, duration: float, part_num: int = 1
 ) -> None:
-    """Layer everything together: bg + subs + hook + audio + music."""
-    logger.info("🎬 Composing final Short…")
+    """
+    Assemble the final YouTube Short using a 2-pass pipeline.
 
-    # Use full audio duration (no hard cap)
-    # Don't trim - play the entire script
-    final_dur = duration  # Use actual audio length
+    Pass 1: Build video track (bg + hook + subtitles + watermark + CTA + progress bar)
+    Pass 2: Mix audio tracks (voice + music with ducking) and mux with video
+    """
+    logger.info("🎬 Composing final Short (2-pass pipeline)…")
+
+    final_dur = duration
+    intermediate = str(Path(output).parent / "intermediate_video.mp4")
+
+    # ── PASS 1: VIDEO + VISUAL OVERLAYS ─────────────────────────────────
+    logger.info("   📹 Pass 1/2: Building video track…")
+
     subs_esc = subtitles.replace("\\", "/").replace(":", "\\:")
-
     has_hook = config.SHOW_HOOK and os.path.exists(hook_img)
-    has_music = music and os.path.exists(music)
-    anim_vid = "112699-695423482.mp4"
-    has_anim = os.path.exists(anim_vid)
 
-    inputs = ["-i", bg_video, "-i", audio]
+    inputs_p1 = ["-i", bg_video]
     if has_hook:
-        inputs += ["-i", hook_img]
-    if has_music:
-        inputs += ["-i", music]
-    if has_anim:
-        inputs += ["-i", anim_vid]
+        inputs_p1 += ["-i", hook_img]
 
-    # Index tracking
-    hook_idx = 2 if has_hook else -1
-    music_idx = (3 if has_hook else 2) if has_music else -1
-    anim_idx = len(inputs) // 2 - 1 if has_anim else -1
+    # Watermark image input
+    has_watermark = (
+        config.SHOW_CHANNEL_WATERMARK
+        and hasattr(config, 'WATERMARK_IMAGE')
+        and os.path.exists(str(config.WATERMARK_IMAGE))
+    )
+    if has_watermark:
+        inputs_p1 += ["-i", str(config.WATERMARK_IMAGE)]
 
-    wt = str(1 - config.MUSIC_VOLUME)
-    mv = str(config.MUSIC_VOLUME)
-
-    # GAMIFICATION: Add progress bar at the bottom
-    prog_bar = f"drawbox=y=ih-15:color=red@0.8:width=iw*t/{final_dur}:height=15:t=fill"
-
-    # AUTO-DUCKING: Sidechain compressor logic
-    if has_music:
-        ducking = (
-            f"[1:a]volume={wt}[voice]; "
-            f"[{music_idx}:a]volume={mv}[bgm]; "
-            f"[voice]asplit[v1][v2]; "
-            f"[bgm][v2]sidechaincompress=threshold=-15dB:ratio=4:attack=50:release=300[ducked_bgm]; "
-            f"[v1][ducked_bgm]amix=inputs=2:duration=first:dropout_transition=2[fa]; "
-        )
-    else:
-        ducking = ""
+    # Track input indices
+    idx = 1
+    hook_idx = -1
+    watermark_idx = -1
+    if has_hook:
+        hook_idx = idx
+        idx += 1
+    if has_watermark:
+        watermark_idx = idx
+        idx += 1
 
     # Build filter graph
-    # Add subtitles
-    subs_layer = f"[0:v]ass='{subs_esc}'[subbed]; "
-    
-    # Overlay animation on subtitles layer if exists
-    if has_anim:
-        # Scale animation width to match video width (1080), maintain aspect ratio, then overlay using screen blend to remove dark bg.
-        # Since it's a social animation, let's put it on bottom half, e.g. y=H-h-200.
-        # It lasts 8 seconds, let's show it at the beginning (say t < 8) and at end (duration - 8)
-        # However, to loop it at the end, we can just let it play or loop it. Since it's 8s long, we can loop the input.
-        # But `-stream_loop -1` would need to be added to anim input. Let's just overlay without loop for simple intro/outro, or simply use `enable`
-        inputs_anim = f"[{anim_idx}:v]scale={config.VID_WIDTH}:-1,format=yuva420p,colorchannelmixer=0x000000:0.1[anim_scaled]; "
-        overlay_anim = (
-            f"[subbed][anim_scaled]overlay=x=(W-w)/2:y=H-h-250:"
-            f"enable='between(t,0,8)+between(t,{final_dur-8},{final_dur})'[with_anim]; "
-        )
-        base_video_layer = f"{subs_layer}{inputs_anim}{overlay_anim}"
-        current_v = "[with_anim]"
-    else:
-        base_video_layer = subs_layer
-        current_v = "[subbed]"
+    current_v = "[0:v]"
+    fg_parts = []
 
-    # Hook image layer
+    # Layer 1: Hook overlay (first N seconds with fade-out)
     if has_hook:
-        hook_layer = (
+        fg_parts.append(
             f"[{hook_idx}:v]scale={config.VID_WIDTH}:{config.VID_HEIGHT}:"
             f"force_original_aspect_ratio=increase,"
             f"crop={config.VID_WIDTH}:{config.VID_HEIGHT},"
-            f"fade=t=out:st={config.HOOK_DURATION-0.3}:d=0.3[hookv];"
+            f"fade=t=out:st={config.HOOK_DURATION-0.3}:d=0.3[hookv]; "
             f"{current_v}[hookv]overlay=0:0:"
-            f"enable='lte(t,{config.HOOK_DURATION})',{prog_bar}[fv]"
+            f"enable='lte(t,{config.HOOK_DURATION})'[with_hook]"
         )
-        fg = base_video_layer + hook_layer
-    else:
-        fg = f"{base_video_layer}{current_v}{prog_bar}[fv]"
+        current_v = "[with_hook]"
 
-    if has_music:
-        fg += ";" + ducking
-        map_args = ["-map", "[fv]", "-map", "[fa]"]
-    else:
-        map_args = ["-map", "[fv]", "-map", "1:a"]
+    # Layer 2: Subtitles (ASS)
+    fg_parts.append(f"{current_v}ass='{subs_esc}'[subbed]")
+    current_v = "[subbed]"
 
-    # Build optimized FFmpeg command for smooth video
-    cmd = ["ffmpeg", "-y"]
+    # Layer 3: Watermark (persistent, semi-transparent)
+    if has_watermark:
+        margin = getattr(config, 'WATERMARK_MARGIN', 30)
+        scale_w = getattr(config, 'WATERMARK_SCALE', 120)
+        opacity = getattr(config, 'WATERMARK_OPACITY', 0.70)
+        pos = getattr(config, 'WATERMARK_POSITION', 'top-left')
 
-    # Add hardware acceleration if available
+        # Position mapping
+        if pos == "top-left":
+            x_expr, y_expr = str(margin), str(margin)
+        elif pos == "top-right":
+            x_expr, y_expr = f"W-w-{margin}", str(margin)
+        elif pos == "bottom-left":
+            x_expr, y_expr = str(margin), f"H-h-{margin}"
+        else:  # bottom-right
+            x_expr, y_expr = f"W-w-{margin}", f"H-h-{margin}"
+
+        fg_parts.append(
+            f"[{watermark_idx}:v]scale={scale_w}:-1,"
+            f"format=rgba,colorchannelmixer=aa={opacity}[wm]; "
+            f"{current_v}[wm]overlay={x_expr}:{y_expr}[watermarked]"
+        )
+        current_v = "[watermarked]"
+
+    # Layer 4: Part tag (top-left, first N seconds) — drawtext
+    # NOTE: Explicit fontfile required on Windows (fontconfig is not configured)
+    _win_font = "C\\:/Windows/Fonts/arial.ttf"
+    if getattr(config, 'SHOW_PART_TAG', False):
+        pt_dur = getattr(config, 'PART_TAG_DURATION', 4.0)
+        fg_parts.append(
+            f"{current_v}drawtext="
+            f"fontfile='{_win_font}':"
+            f"text='Part {part_num}':"
+            f"fontsize=42:fontcolor=white@0.9:"
+            f"borderw=3:bordercolor=black@0.7:"
+            f"x=40:y=100:"
+            f"enable='lte(t,{pt_dur})'[pt]"
+        )
+        current_v = "[pt]"
+
+    # Layer 5: CTA overlay (last N seconds) — drawtext
+    if getattr(config, 'SHOW_CTA_OVERLAY', False):
+        cta_dur = getattr(config, 'CTA_DURATION', 3.0)
+        cta_size = getattr(config, 'CTA_FONT_SIZE', 52)
+        cta_raw = config.CTA_TEXT.format(next_part=part_num + 1) if hasattr(config, 'CTA_TEXT') else f"Part {part_num+1} Tomorrow!"
+        # Escape special chars for FFmpeg drawtext (colons, backslashes, single quotes)
+        cta_text = cta_raw.replace("'", "\u2019").replace("&", "and")
+        cta_start = max(0, final_dur - cta_dur)
+        fg_parts.append(
+            f"{current_v}drawtext="
+            f"fontfile='{_win_font}':"
+            f"text='{cta_text}':"
+            f"fontsize={cta_size}:fontcolor=yellow@0.95:"
+            f"borderw=3:bordercolor=black@0.8:"
+            f"x=(w-tw)/2:y=h*0.15:"
+            f"enable='gte(t,{cta_start})'[cta]"
+        )
+        current_v = "[cta]"
+
+    # Layer 6: Progress bar (bottom of screen)
+    fg_parts.append(
+        f"{current_v}drawbox=y=ih-15:color=red@0.8:"
+        f"width=iw*t/{final_dur}:height=15:t=fill[fv]"
+    )
+
+    fg = "; ".join(fg_parts)
+
+    cmd_p1 = ["ffmpeg", "-y"]
     if config.USE_HWACCEL:
-        cmd += ["-hwaccel", "auto"]  # Auto-detect available acceleration     
-
-    cmd += inputs
-    cmd += ["-filter_complex", fg] + map_args
-    cmd += [
+        cmd_p1 += ["-hwaccel", "auto"]
+    cmd_p1 += inputs_p1 + [
+        "-filter_complex", fg,
+        "-map", "[fv]",
         "-t", str(final_dur),
+        "-an",  # No audio in Pass 1
         "-c:v", config.VIDEO_CODEC,
         "-preset", config.VIDEO_PRESET,
-        "-profile:v", "main",        # Ensure wide compatibility
-        "-level", "4.2",              # YouTube compatible level
+        "-profile:v", "main",
+        "-level", "4.2",
         "-crf", str(config.VIDEO_CRF),
-        "-maxrate", "5000k",          # Smooth bitrate control
-        "-bufsize", "10000k",        # Reduce bitrate jitter
+        "-maxrate", "5000k",
+        "-bufsize", "10000k",
+        "-pix_fmt", "yuv420p",
+        intermediate,
+    ]
+
+    # Log full command for debugging
+    logger.debug(f"Pass 1 command: {' '.join(cmd_p1)}")
+    logger.debug(f"Pass 1 filter_complex: {fg}")
+
+    try:
+        r = subprocess.run(cmd_p1, capture_output=True, text=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        logger.error("❌ Pass 1 timeout (10+ min) — video too long or system overloaded")
+        raise RuntimeError("Video composition Pass 1 timeout")
+
+    if r.returncode != 0:
+        logger.error(f"❌ Pass 1 FFmpeg error (exit code {r.returncode}):")
+        logger.error(f"STDERR (last 3000 chars):\n{r.stderr[-3000:]}")
+        logger.error(f"Filter graph:\n{fg}")
+        raise RuntimeError("Video composition Pass 1 failed")
+
+    logger.info("   ✅ Pass 1 complete — video track ready")
+
+    # ── PASS 2: AUDIO MIX + FINAL MERGE ─────────────────────────────────
+    logger.info("   🔊 Pass 2/2: Mixing audio & merging…")
+
+    has_music = music and os.path.exists(music)
+    inputs_p2 = ["-i", intermediate, "-i", audio]
+    if has_music:
+        inputs_p2 += ["-i", music]
+
+    if has_music:
+        wt = str(1 - config.MUSIC_VOLUME)
+        mv = str(config.MUSIC_VOLUME)
+
+        audio_fg = (
+            f"[1:a]volume={wt}[voice]; "
+            f"[2:a]volume={mv}[bgm]; "
+            f"[voice]asplit[v1][v2]; "
+            f"[bgm][v2]sidechaincompress=threshold=-15dB:ratio=4:attack=50:release=300[ducked_bgm]; "
+            f"[v1][ducked_bgm]amix=inputs=2:duration=first:dropout_transition=2[fa]"
+        )
+        map_args = ["-map", "0:v", "-map", "[fa]"]
+    else:
+        audio_fg = None
+        map_args = ["-map", "0:v", "-map", "1:a"]
+
+    cmd_p2 = ["ffmpeg", "-y"] + inputs_p2
+    if audio_fg:
+        cmd_p2 += ["-filter_complex", audio_fg]
+    cmd_p2 += map_args + [
+        "-t", str(final_dur),
+        "-c:v", "copy",  # ← No video re-encoding (10x faster!)
         "-c:a", "aac",
         "-b:a", config.AUDIO_BITRATE,
         "-ar", config.AUDIO_SAMPLE_RATE,
-        "-pix_fmt", "yuv420p",
         "-movflags", "+faststart",
         "-strict", "normal",
-        output
+        output,
     ]
 
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        r = subprocess.run(cmd_p2, capture_output=True, text=True, timeout=120)
     except subprocess.TimeoutExpired:
-        logger.error("❌ FFmpeg timeout (10+ minutes) - video too long or system overloaded")
-        raise RuntimeError("Video composition timeout")
-    
+        logger.error("❌ Pass 2 timeout — audio mix issue")
+        raise RuntimeError("Video composition Pass 2 timeout")
+
     if r.returncode != 0:
-        logger.error(f"❌ FFmpeg error:\n{r.stderr[-1000:]}")
-        logger.error(f"Command: {' '.join(cmd)}")
-        raise RuntimeError("Video composition failed")
+        logger.error(f"❌ Pass 2 FFmpeg error (exit code {r.returncode}):")
+        logger.error(f"STDERR (last 3000 chars):\n{r.stderr[-3000:]}")
+        raise RuntimeError("Video composition Pass 2 failed")
+
+    # Cleanup intermediate
+    try:
+        os.remove(intermediate)
+    except OSError:
+        pass
 
     size_mb = os.path.getsize(output) / 1024 / 1024
     logger.info(f"✅ Short ready! | {final_dur:.1f}s | {size_mb:.1f} MB | {output}")
@@ -1681,18 +1946,13 @@ async def generate_short(input_text: str, part_num: int = 1) -> Dict:
         logger.info("📝 Step 1/10: Parsing script…")
         segments = parse_script(input_text)
         
-        # ── UPGRADE: Add branded Intro/Outro ──────────────────────
+        # ── Trim to target word count ────────────────────────────
         segments = trim_to_target(segments)
 
-        if config.ADD_INTRO:
-            logger.info("✨ Adding Channel Intro…")
-            intro_text = f"Welcome to Snippet Stories."
-            segments.insert(0, {"speaker": "narrator", "text": intro_text, "voice": config.VOICES["narrator"], "type": "dialogue"})
+        # NOTE: Spoken intro/outro REMOVED (kills retention).
+        # Branding is now visual-only: watermark + CTA overlay + Part tag.
+        # See compose_video() for the visual branding implementation.
 
-        if config.ADD_OUTRO:
-            logger.info("✨ Adding Channel Outro…")
-            outro_text = f"Thanks for watching! If you enjoyed this, hit LIKE, drop a COMMENT, and SUBSCRIBE for Part {part_num + 1}!"
-            segments.append({"speaker": "narrator", "text": outro_text, "voice": config.VOICES["narrator"], "type": "dialogue"})
         if not segments:
             raise ValueError("No segments parsed — check script format")
 
@@ -1725,6 +1985,14 @@ async def generate_short(input_text: str, part_num: int = 1) -> Dict:
             segments, audio_dir
         )
 
+        # ── STEP 4.5: Mix SFX into audio ─────────────────────────
+        if config.MOOD_SFX_ENABLED and mood_sfx:
+            logger.info("🔊 Step 4.5: Mixing SFX into audio…")
+            audio_with_sfx = str(part_dir / "audio_with_sfx.wav")
+            audio_path = mix_sfx_into_audio(
+                audio_path, mood_sfx, segments, total_dur, audio_with_sfx
+            )
+
         # ── STEP 5: Add loop bridge ──────────────────────────────
         if config.ADD_LOOP_BRIDGE:
             logger.info("🔁 Step 5/10: Adding loop bridge…")
@@ -1736,27 +2004,8 @@ async def generate_short(input_text: str, part_num: int = 1) -> Dict:
         logger.info("📝 Step 6/10: Generating subtitles…")
         sub_path = str(part_dir / "subs.ass")
         
-        # FIXED: Choose subtitle generation method based on config
-        if config.USE_FRAME_PERFECT_SUBTITLES:
-            logger.info("   Using frame-perfect subtitle generation (librosa-based)…")
-            # Prepare segment data for frame-perfect sync
-            sub_segments = [
-                {
-                    "text": s['text'],
-                    "speaker": s['speaker'],
-                    "start_time": s.get('start_time', 0),
-                    "duration": s.get('duration', 3.0)
-                }
-                for s in segments[:min(20, len(segments))]  # Limit for performance
-            ]
-            try:
-                create_frame_perfect_subtitles(audio_path, sub_segments, sub_path, total_dur)
-            except Exception as e:
-                logger.warning(f"Frame-perfect subtitle generation failed, falling back to regular: {e}")
-                generate_subtitles(word_timings, sub_path, total_dur)
-        else:
-            # Generate standard subtitles with karaoke timing and character colors
-            generate_subtitles(word_timings, sub_path, total_dur)
+        # Generate standard subtitles with smooth karaoke timing and character colors
+        generate_subtitles(word_timings, sub_path, total_dur)
 
         # ── STEP 7: Generate background ──────────────────────────
         logger.info(f"🎨 Step 7/10: Generating background (Tier {config.BG_TIER}, mood={overall_mood})…")
@@ -1780,12 +2029,13 @@ async def generate_short(input_text: str, part_num: int = 1) -> Dict:
         )
 
         # ── STEP 10: Compose final video ─────────────────────────
-        logger.info("🎬 Step 10/10: Composing final video…")
+        logger.info("🎬 Step 10/10: Composing final video (2-pass)…")
         output_video = str(config.OUTPUT_DIR / f"short_part_{part_num:02d}.mp4")
         compose_video(
             bg_video=bg_path, audio=audio_path, subtitles=sub_path,
             hook_img=hook_png, music=music_path,
-            output=output_video, duration=total_dur
+            output=output_video, duration=total_dur,
+            part_num=part_num
         )
 
         # ── UPGRADE #2: Loop transition (15-25% replay boost) ────
